@@ -693,6 +693,441 @@ class InlineLexer(object):
         text = m.group(0)
         return self.renderer.text(text)
 
+class MarkdownRenderer(object):
+    """ Markdown renderer
+    """
+
+    def __init__(self, **kwargs):
+        self.options = kwargs
+
+    def placeholder(self):
+        """Returns the default, empty output value for the renderer.
+
+        All renderer methods use the '+=' operator to append to this value.
+        Default is a string so rendering HTML can build up a result string with
+        the rendered Markdown.
+
+        Can be overridden by Renderer subclasses to be types like an empty
+        list, allowing the renderer to create a tree-like structure to
+        represent the document (which can then be reprocessed later into a
+        separate format like docx or pdf).
+        """
+        return ''
+
+    def block_code(self, code, lang=None):
+        """Rendering block level code. ``pre > code``.
+
+        :param code: text content of the code block.
+        :param lang: language of the given code.
+        """
+        code = code.rstrip('\n')
+        return f"```\n{code}\n```\n"
+
+    def block_quote(self, text):
+        """Rendering <blockquote> with the given text.
+
+        :param text: text content of the blockquote.
+        """
+        return "\n".join([f"> {line}" for line in test])
+
+    def block_html(self, html):
+        """Rendering block level pure html content.
+
+        :param html: text content of the html snippet.
+        """
+        return ''
+
+    def header(self, text, level, raw=None):
+        """Rendering header/heading tags like ``<h1>`` ``<h2>``.
+
+        :param text: rendered text content for the header.
+        :param level: a number for the header level, for example: 1.
+        :param raw: raw text content of the header.
+        """
+        return ("#"*level) + text
+
+    def hrule(self):
+        """Rendering method for ``<hr>`` tag."""
+        return "---"
+
+    def list(self, body, ordered=True):
+        """Rendering list tags like ``<ul>`` and ``<ol>``.
+
+        :param body: body contents of the list.
+        :param ordered: whether this list is ordered or not.
+        """
+        return ""
+
+    def list_item(self, text, ordered=False):
+        """Rendering list item snippet. Like ``<li>``."""
+        return f"- {text}\n"
+
+    def paragraph(self, text):
+        """Rendering paragraph tags. Like ``<p>``."""
+        return f"\n\n {text} \n\n"
+
+    def table(self, header, body):
+        """Rendering table element. Wrap header and body in it.
+
+        :param header: header part of the table.
+        :param body: body part of the table.
+        """
+        return f"{header} |\n|---|\n{body} |\n"
+
+    def table_row(self, content):
+        """Rendering a table row. Like ``<tr>``.
+
+        :param content: content of current table row.
+        """
+        return f"{content}"
+
+    def table_cell(self, content, **flags):
+        """Rendering a table cell. Like ``<th>`` ``<td>``.
+
+        :param content: content of current table cell.
+        :param header: whether this is header or not.
+        :param align: align of current table cell.
+        """
+        return f"{content} |"
+
+
+    def double_emphasis(self, text):
+        """Rendering **strong** text.
+
+        :param text: text content for emphasis.
+        """
+        return f"**{text}**"
+
+    def emphasis(self, text):
+        """Rendering *emphasis* text.
+
+        :param text: text content for emphasis.
+        """
+        return f"*{text}*"
+
+    def codespan(self, text):
+        """Rendering inline `code` text.
+
+        :param text: text content for inline code.
+        """
+        text = escape(text.rstrip(), smart_amp=False)
+        return f"`{text}`"
+
+    def linebreak(self):
+        """Rendering line break like ``<br>``."""
+        return "\n"
+
+    def strikethrough(self, text):
+        """Rendering ~~strikethrough~~ text.
+
+        :param text: text content for strikethrough.
+        """
+        return f"_{text}_"
+
+    def text(self, text):
+        """Rendering unformatted text.
+
+        :param text: text content.
+        """
+        return escape(text)
+
+    def escape(self, text):
+        """Rendering escape sequence.
+
+        :param text: text content.
+        """
+        return escape(text)
+
+    def autolink(self, link, is_email=False):
+        """Rendering a given link or email address.
+
+        :param link: link content or email address.
+        :param is_email: whether this is an email or not.
+        """
+        text = link = escape_link(link)
+        if is_email:
+            link = 'mailto:%s' % link
+
+        return f"[link][text]"
+
+    def link(self, link, title, text):
+        """Rendering a given link with content and title.
+
+        :param link: href link for ``<a>`` tag.
+        :param title: title content for `title` attribute.
+        :param text: text content for description.
+        """
+        link = escape_link(link)
+        return f"[link][text]"
+
+
+    def image(self, src, title, text):
+        """Rendering a image with title and text.
+
+        :param src: source link of the image.
+        :param title: title text of the image.
+        :param text: alt text of the image.
+        """
+        src = escape_link(src)
+        text = escape(text, quote=True)
+        return f"[src][title][text]"
+
+
+    def inline_html(self, html):
+        """Rendering span level pure html content.
+
+        :param html: text content of the html snippet.
+        """
+        if self.options.get('escape'):
+            return escape(html)
+        return html
+
+    def newline(self):
+        """Rendering newline element."""
+        return '\n'
+
+    def footnote_ref(self, key, index):
+        """Rendering the ref anchor of a footnote.
+
+        :param key: identity key for the footnote.
+        :param index: the index count of current footnote.
+        """
+        return f"{key}"
+
+    def footnote_item(self, key, text):
+        """Rendering a footnote item.
+
+        :param key: identity key for the footnote.
+        :param text: text content of the footnote.
+        """
+        back = (
+            '<a href="#fnref-%s" class="footnote">&#8617;</a>'
+        ) % escape(key)
+        text = text.rstrip()
+        return f"[key][text]"
+
+    def footnotes(self, text):
+        """Wrapper for all footnotes.
+
+        :param text: contents of all footnotes.
+        """
+        return f"{text}"
+
+
+class Markdown(object):
+    """The Markdown parser.
+
+    :param renderer: An instance of ``Renderer``.
+    :param inline: An inline lexer class or instance.
+    :param block: A block lexer class or instance.
+    """
+    def __init__(self, renderer=None, inline=None, block=None, **kwargs):
+        if not renderer:
+            renderer = Renderer(**kwargs)
+        else:
+            kwargs.update(renderer.options)
+
+        self.renderer = renderer
+
+        if inline and inspect.isclass(inline):
+            inline = inline(renderer, **kwargs)
+        if block and inspect.isclass(block):
+            block = block(**kwargs)
+
+        if inline:
+            self.inline = inline
+        else:
+            self.inline = InlineLexer(renderer, **kwargs)
+
+        self.block = block or BlockLexer(BlockGrammar())
+        self.footnotes = []
+        self.tokens = []
+
+        # detect if it should parse text in block html
+        self._parse_block_html = kwargs.get('parse_block_html')
+
+    def __call__(self, text):
+        return self.parse(text)
+
+    def render(self, text):
+        """Render the Markdown text.
+
+        :param text: markdown formatted text content.
+        """
+        return self.parse(text)
+
+    def parse(self, text):
+        out = self.output(preprocessing(text))
+
+        keys = self.block.def_footnotes
+
+        # reset block
+        self.block.def_links = {}
+        self.block.def_footnotes = {}
+
+        # reset inline
+        self.inline.links = {}
+        self.inline.footnotes = {}
+
+        if not self.footnotes:
+            return out
+
+        footnotes = filter(lambda o: keys.get(o['key']), self.footnotes)
+        self.footnotes = sorted(
+            footnotes, key=lambda o: keys.get(o['key']), reverse=True
+        )
+
+        body = self.renderer.placeholder()
+        while self.footnotes:
+            note = self.footnotes.pop()
+            body += self.renderer.footnote_item(
+                note['key'], note['text']
+            )
+
+        out += self.renderer.footnotes(body)
+        return out
+
+    def pop(self):
+        if not self.tokens:
+            return None
+        self.token = self.tokens.pop()
+        return self.token
+
+    def peek(self):
+        if self.tokens:
+            return self.tokens[-1]
+        return None  # pragma: no cover
+
+    def output(self, text, rules=None):
+        self.tokens = self.block(text, rules)
+        self.tokens.reverse()
+
+        self.inline.setup(self.block.def_links, self.block.def_footnotes)
+
+        out = self.renderer.placeholder()
+        while self.pop():
+            out += self.tok()
+        return out
+
+    def tok(self):
+        t = self.token['type']
+
+        # sepcial cases
+        if t.endswith('_start'):
+            t = t[:-6]
+
+        return getattr(self, 'output_%s' % t)()
+
+    def tok_text(self):
+        text = self.token['text']
+        while self.peek()['type'] == 'text':
+            text += '\n' + self.pop()['text']
+        return self.inline(text)
+
+    def output_newline(self):
+        return self.renderer.newline()
+
+    def output_hrule(self):
+        return self.renderer.hrule()
+
+    def output_heading(self):
+        return self.renderer.header(
+            self.inline(self.token['text']),
+            self.token['level'],
+            self.token['text'],
+        )
+
+    def output_code(self):
+        return self.renderer.block_code(
+            self.token['text'], self.token['lang']
+        )
+
+    def output_table(self):
+        aligns = self.token['align']
+        aligns_length = len(aligns)
+        cell = self.renderer.placeholder()
+
+        # header part
+        header = self.renderer.placeholder()
+        for i, value in enumerate(self.token['header']):
+            align = aligns[i] if i < aligns_length else None
+            flags = {'header': True, 'align': align}
+            cell += self.renderer.table_cell(self.inline(value), **flags)
+
+        header += self.renderer.table_row(cell)
+
+        # body part
+        body = self.renderer.placeholder()
+        for i, row in enumerate(self.token['cells']):
+            cell = self.renderer.placeholder()
+            for j, value in enumerate(row):
+                align = aligns[j] if j < aligns_length else None
+                flags = {'header': False, 'align': align}
+                cell += self.renderer.table_cell(self.inline(value), **flags)
+            body += self.renderer.table_row(cell)
+
+        return self.renderer.table(header, body)
+
+    def output_block_quote(self):
+        body = self.renderer.placeholder()
+        while self.pop()['type'] != 'block_quote_end':
+            body += self.tok()
+        return self.renderer.block_quote(body)
+
+    def output_list(self):
+        ordered = self.token['ordered']
+        body = self.renderer.placeholder()
+        while self.pop()['type'] != 'list_end':
+            body += self.tok()
+        return self.renderer.list(body, ordered)
+
+    def output_list_item(self):
+        body = self.renderer.placeholder()
+        while self.pop()['type'] != 'list_item_end':
+            if self.token['type'] == 'text':
+                body += self.tok_text()
+            else:
+                body += self.tok()
+
+        return self.renderer.list_item(body)
+
+    def output_loose_item(self):
+        body = self.renderer.placeholder()
+        while self.pop()['type'] != 'list_item_end':
+            body += self.tok()
+        return self.renderer.list_item(body)
+
+    def output_footnote(self):
+        self.inline._in_footnote = True
+        body = self.renderer.placeholder()
+        key = self.token['key']
+        while self.pop()['type'] != 'footnote_end':
+            body += self.tok()
+        self.footnotes.append({'key': key, 'text': body})
+        self.inline._in_footnote = False
+        return self.renderer.placeholder()
+
+    def output_close_html(self):
+        text = self.token['text']
+        return self.renderer.block_html(text)
+
+    def output_open_html(self):
+        text = self.token['text']
+        tag = self.token['tag']
+        if self._parse_block_html and tag not in _pre_tags:
+            text = self.inline(text, rules=self.inline.inline_html_rules)
+        extra = self.token.get('extra') or ''
+        html = '<%s%s>%s</%s>' % (tag, extra, text, tag)
+        return self.renderer.block_html(html)
+
+    def output_paragraph(self):
+        return self.renderer.paragraph(self.inline(self.token['text']))
+
+    def output_text(self):
+        return self.renderer.paragraph(self.tok_text())
+
+
+
 
 class Renderer(object):
     """The default HTML renderer for rendering Markdown.
@@ -1184,4 +1619,10 @@ def markdown(text, escape=True, **kwargs):
     :param parse_block_html: parse text only in block level html.
     :param parse_inline_html: parse text only in inline level html.
     """
-    return Markdown(escape=escape, **kwargs)(text)
+    return Markdown(renderer=MarkdownRenderer(), escape=escape, **kwargs)(text)
+
+
+
+with open("sample.md", "r") as f:
+    text = f.read()
+    print(markdown(text))
